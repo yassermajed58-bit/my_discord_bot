@@ -1,52 +1,59 @@
 import discord
 import os
+import asyncio
 from discord.ext import commands
 
-# 1. إعداد التصاريح
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.voice_states = True
 
+# تعريف البوت
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f'✅ البوت متصل الآن باسم: {bot.user.name}')
+    await bot.change_presence(activity=discord.Game(name="حارس السيرفر 🤐"))
+    print(f'✅ {bot.user.name} جاهز بالأوامر السريعة!')
 
-# --- أمر كتم الجميع ما عدا "أنت" (للمسؤولين فقط) ---
+# --- أمر الكتم (حرفين فقط: mt) ---
 @bot.command()
 @commands.has_permissions(administrator=True)
-async def muteall(ctx):
+async def mt(ctx):
     if ctx.author.voice:
         channel = ctx.author.voice.channel
+        msg = await ctx.send("⏳ **جاري كتم الجميع...**")
+        
+        for i in range(3, 0, -1):
+            await msg.edit(content=f"⏳ **جاري كتم الجميع خلال: {i}**")
+            await asyncio.sleep(1)
+        
         for member in channel.members:
-            # هنا التعديل: إذا كان العضو هو "أنت" أو "البوت نفسه" لا يكتمه
             if member != ctx.author and member != bot.user:
                 await member.edit(mute=True)
         
-        await ctx.send(f"🤐 تم كتم الجميع في {channel.name}.. المايك الآن لك وحده يا {ctx.author.name}! 👑")
+        await msg.edit(content=f"🤐 **تم الصمت! المايك لك وحده يا {ctx.author.name} 👑**")
     else:
-        await ctx.send("❌ ادخل روم صوتي أولاً لتنفيذ الأمر!")
+        await ctx.send("❌ ادخل روم صوتي أولاً!")
 
-# --- أمر إلغاء كتم الجميع ---
+# --- أمر الفتح (حرفين فقط: un) ---
 @bot.command()
 @commands.has_permissions(administrator=True)
-async def unmuteall(ctx):
+async def un(ctx):
     if ctx.author.voice:
         channel = ctx.author.voice.channel
         for member in channel.members:
             await member.edit(mute=False)
-        await ctx.send(f"🎙️ تم فتح المايك للجميع بطلب من {ctx.author.name}")
+        await ctx.send("🎙️ **فتحت المايك للكل، تفضلوا احجوا!**")
     else:
-        await ctx.send("❌ ادخل روم صوتي أولاً!")
+        await ctx.send("❌ ادخل روم صوتي!")
 
-# رسالة الخطأ للمتطفلين
-@muteall.error
-@unmuteall.error
+# خطأ التصاريح
+@mt.error
+@un.error
 async def admin_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
-        await ctx.send(f"🚫 عذراً يا {ctx.author.name}، هذا الأمر للقادة (Administrator) فقط! ✋")
+        await ctx.send(f"🚫 يا {ctx.author.name}، هاي اللعبة للكبار (Admins) بس! 😂")
 
 token = os.environ.get('DISCORD_TOKEN')
 bot.run(token)
