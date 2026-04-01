@@ -8,35 +8,35 @@ intents.message_content = True
 intents.members = True
 intents.voice_states = True
 
-# تعريف البوت
-bot = commands.Bot(command_prefix='!', intents=intents)
+# التعديل هنا: جعلنا البريفكس فارغاً '' ليعمل الأمر بكتابة الحرفين مباشرة
+bot = commands.Bot(command_prefix='', intents=intents)
 
 @bot.event
 async def on_ready():
     await bot.change_presence(activity=discord.Game(name="حارس السيرفر 🤐"))
-    print(f'✅ {bot.user.name} جاهز بالأوامر السريعة!')
+    print(f'✅ {bot.user.name} جاهز للأوامر المباشرة!')
 
-# --- أمر الكتم (حرفين فقط: mt) ---
+# --- أمر الكتم المباشر: mt ---
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def mt(ctx):
     if ctx.author.voice:
         channel = ctx.author.voice.channel
-        msg = await ctx.send("⏳ **جاري كتم الجميع...**")
+        msg = await ctx.send("⏳ **تحذير.. سيتم فرض الصمت**")
         
         for i in range(3, 0, -1):
-            await msg.edit(content=f"⏳ **جاري كتم الجميع خلال: {i}**")
+            await msg.edit(content=f"⏳ **تحذير.. سيتم فرض الصمت خلال: {i}**")
             await asyncio.sleep(1)
         
         for member in channel.members:
             if member != ctx.author and member != bot.user:
                 await member.edit(mute=True)
         
-        await msg.edit(content=f"🤐 **تم الصمت! المايك لك وحده يا {ctx.author.name} 👑**")
+        await msg.edit(content=f"🤐 **تم الصمت! المايك لك وحدك يا {ctx.author.name} 👑**")
     else:
         await ctx.send("❌ ادخل روم صوتي أولاً!")
 
-# --- أمر الفتح (حرفين فقط: un) ---
+# --- أمر الفتح المباشر: un ---
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def un(ctx):
@@ -48,12 +48,12 @@ async def un(ctx):
     else:
         await ctx.send("❌ ادخل روم صوتي!")
 
-# خطأ التصاريح
+# رسالة الخطأ
 @mt.error
 @un.error
 async def admin_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
-        await ctx.send(f"🚫 يا {ctx.author.name}، هاي اللعبة للكبار (Admins) بس! 😂")
+        await ctx.send(f"🚫 عذراً يا {ctx.author.name}، هذا الأمر للمسؤولين فقط! 😂")
 
 token = os.environ.get('DISCORD_TOKEN')
 bot.run(token)
