@@ -1,59 +1,60 @@
 import discord
 import os
 import asyncio
-from discord.ext import commands
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.voice_states = True
 
-# التعديل هنا: جعلنا البريفكس فارغاً '' ليعمل الأمر بكتابة الحرفين مباشرة
-bot = commands.Bot(command_prefix='', intents=intents)
+client = discord.Client(intents=intents)
 
-@bot.event
+@client.event
 async def on_ready():
-    await bot.change_presence(activity=discord.Game(name="حارس السيرفر 🤐"))
-    print(f'✅ {bot.user.name} جاهز للأوامر المباشرة!')
+    await client.change_presence(activity=discord.Game(name="حارس السيرفر 🤐"))
+    print(f'✅ {client.user.name} جاهز للأوامر المباشرة (mt/un)!')
 
-# --- أمر الكتم المباشر: mt ---
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def mt(ctx):
-    if ctx.author.voice:
-        channel = ctx.author.voice.channel
-        msg = await ctx.send("⏳ **تحذير.. سيتم فرض الصمت**")
-        
-        for i in range(3, 0, -1):
-            await msg.edit(content=f"⏳ **تحذير.. سيتم فرض الصمت خلال: {i}**")
-            await asyncio.sleep(1)
-        
-        for member in channel.members:
-            if member != ctx.author and member != bot.user:
-                await member.edit(mute=True)
-        
-        await msg.edit(content=f"🤐 **تم الصمت! المايك لك وحدك يا {ctx.author.name} 👑**")
-    else:
-        await ctx.send("❌ ادخل روم صوتي أولاً!")
+@client.event
+async def on_message(message):
+    # تجاهل رسائل البوت نفسه
+    if message.author == client.user:
+        return
 
-# --- أمر الفتح المباشر: un ---
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def un(ctx):
-    if ctx.author.voice:
-        channel = ctx.author.voice.channel
-        for member in channel.members:
-            await member.edit(mute=False)
-        await ctx.send("🎙️ **فتحت المايك للكل، تفضلوا احجوا!**")
-    else:
-        await ctx.send("❌ ادخل روم صوتي!")
+    # تحويل الرسالة لنص صغير للتأكد
+    content = message.content.lower().strip()
 
-# رسالة الخطأ
-@mt.error
-@un.error
-async def admin_error(ctx, error):
-    if isinstance(error, commands.MissingPermissions):
-        await ctx.send(f"🚫 عذراً يا {ctx.author.name}، هذا الأمر للمسؤولين فقط! 😂")
+    # --- أمر الكتم المباشر: mt ---
+    if content == 'mt':
+        if message.author.guild_permissions.administrator:
+            if message.author.voice:
+                channel = message.author.voice.channel
+                msg = await message.channel.send("⏳ **تنبيه.. الصمت يقترب**")
+                
+                for i in range(3, 0, -1):
+                    await msg.edit(content=f"⏳ **تنبيه.. الصمت يقترب خلال: {i}**")
+                    await asyncio.sleep(1)
+                
+                for member in channel.members:
+                    if member != message.author and member != client.user:
+                        await member.edit(mute=True)
+                
+                await msg.edit(content=f"🤐 **تم الصمت! المايك لك وحده يا {message.author.name} 👑**")
+            else:
+                await message.channel.send("❌ ادخل روم صوتي أولاً!")
+        else:
+            await message.channel.send(f"🚫 يا {message.author.name}، هاي اللعبة للأدمن بس! 😂")
 
+    # --- أمر الفتح المباشر: un ---
+    elif content == 'un':
+        if message.author.guild_permissions.administrator:
+            if message.author.voice:
+                channel = message.author.voice.channel
+                for member in channel.members:
+                    await member.edit(mute=False)
+                await message.channel.send("🎙️ **فتحت المايك للكل، تفضلوا احجوا!**")
+            else:
+                await message.channel.send("❌ ادخل روم صوتي!")
+
+# تشغيل البوت
 token = os.environ.get('DISCORD_TOKEN')
-bot.run(token)
+client.run(token)
