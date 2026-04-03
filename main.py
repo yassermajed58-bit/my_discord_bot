@@ -1,67 +1,60 @@
 import discord
 import os
 import asyncio
-from discord.ext import commands
 
-# ID روم اللوك مالتك
-LOG_CHANNEL_ID = 1489596321580060732
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
+intents.voice_states = True
 
-# تفعيل كل الحساسات برمجياً
-intents = discord.Intents.all()
-bot = commands.Bot(command_prefix='', intents=intents) # بدون بريفكس حتى تكتب mt مباشرة
+client = discord.Client(intents=intents)
 
-@bot.event
+@client.event
 async def on_ready():
-    print(f'✅ {bot.user.name} دخل الخدمة يا شنشول!')
+    await client.change_presence(activity=discord.Game(name="حارس السيرفر 🤐"))
+    print(f'✅ {client.user.name} جاهز للأوامر المباشرة (mt/un)!')
 
-@bot.event
+@client.event
 async def on_message(message):
-    if message.author.bot:
+    # تجاهل رسائل البوت نفسه
+    if message.author == client.user:
         return
 
+    # تحويل الرسالة لنص صغير للتأكد
     content = message.content.lower().strip()
 
-    # --- أمر الكتم السريع mt ---
+    # --- أمر الكتم المباشر: mt ---
     if content == 'mt':
-        if message.author.voice:
-            # مسح كلمة mt فوراً حتى ما تخرب الشات
-            try: await message.delete()
-            except: pass
-            
-            channel = message.author.voice.channel
-            count = 0
-            # نجلب الأعضاء بطريقة "الفريش"
-            members = channel.members
-            for member in members:
-                if member != message.author and not member.bot:
-                    try:
+        if message.author.guild_permissions.administrator:
+            if message.author.voice:
+                channel = message.author.voice.channel
+                msg = await message.channel.send("⏳ تنبيه.. الصمت يقترب")
+                
+                for i in range(3, 0, -1):
+                    await msg.edit(content=f"⏳ تنبيه.. الصمت يقترب خلال: {i}")
+                    await asyncio.sleep(1)
+                
+                for member in channel.members:
+                    if member != message.author and member != client.user:
                         await member.edit(mute=True)
-                        count += 1
-                    except: continue
-            
-            # إرسال التقرير لروم اللوك
-            log_chan = bot.get_channel(LOG_CHANNEL_ID)
-            if log_chan:
-                await log_chan.send(f"🤐 **كتم جماعي:** تم كتم `{count}` لاعبين في `{channel.name}` بواسطة {message.author.name}")
-        
-    # --- أمر الفتح السريع un ---
-    elif content == 'un':
-        if message.author.voice:
-            try: await message.delete()
-            except: pass
-            
-            channel = message.author.voice.channel
-            count = 0
-            for member in channel.members:
-                if not member.bot:
-                    try:
-                        await member.edit(mute=False)
-                        count += 1
-                    except: continue
-            
-            log_chan = bot.get_channel(LOG_CHANNEL_ID)
-            if log_chan:
-                await log_chan.send(f"🎙️ **فتح جماعي:** المايكات انفتحت لـ `{count}` لاعبين بواسطة {message.author.name}")
+                
+                await msg.edit(content=f"🤐 تم الصمت! المايك لك وحده يا {message.author.name} 👑")
+            else:
+                await message.channel.send("❌ ادخل روم صوتي أولاً!")
+        else:
+            await message.channel.send(f"🚫 يا {message.author.name}، هاي اللعبة للأدمن بس! 😂")
 
+    # --- أمر الفتح المباشر: un ---
+    elif content == 'un':
+        if message.author.guild_permissions.administrator:
+            if message.author.voice:
+                channel = message.author.voice.channel
+                for member in channel.members:
+                    await member.edit(mute=False)
+                await message.channel.send("🎙️ فتحت المايك للكل، تفضلوا احجوا!")
+            else:
+                await message.channel.send("❌ ادخل روم صوتي!")
+
+# تشغيل البوت
 token = os.environ.get('DISCORD_TOKEN')
-bot.run(token)
+client.run(token)
