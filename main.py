@@ -1,5 +1,6 @@
 import discord
 import os
+import asyncio
 from discord.ext import commands
 from discord.ui import View
 
@@ -14,53 +15,53 @@ class AmongUsControl(View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    # زر الكتم
     @discord.ui.button(label="كتم الكل (بدأ اللعب) 🔴", style=discord.ButtonStyle.danger, custom_id="mute_all")
     async def mute_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.guild_permissions.administrator:
-            if interaction.user.voice:
-                await interaction.response.defer() # تأكيد الاستلام فوراً
-                channel = interaction.user.voice.channel
-                for member in channel.members:
-                    if member != interaction.user and not member.bot:
-                        try:
-                            await member.edit(mute=True)
-                        except: continue
-                await interaction.followup.send(f"🤐 **تم كتم الجميع بأمر {interaction.user.name}**")
-            else:
-                await interaction.response.send_message("❌ ادخل روم صوتي أولاً!", ephemeral=True)
-        else:
-            await interaction.response.send_message("🚫 للأدمن فقط!", ephemeral=True)
+        # استجابة فورية لمنع الـ Failed
+        await interaction.response.send_message("⏳ جاري الكتم...", ephemeral=True, delete_after=1)
+        
+        if interaction.user.guild_permissions.administrator and interaction.user.voice:
+            channel = interaction.user.voice.channel
+            for member in channel.members:
+                if member != interaction.user and not member.bot:
+                    try: await member.edit(mute=True)
+                    except: continue
+            
+            # إرسال رسالة التأكيد وحذفها بعد 10 ثوانٍ
+            msg = await interaction.channel.send(f"🤐 **تم كتم الجميع بأمر {interaction.user.name}**")
+            await asyncio.sleep(10)
+            try: await msg.delete()
+            except: pass
 
-    # زر الفتح
     @discord.ui.button(label="فتح الكل (إجتماع) 🟢", style=discord.ButtonStyle.success, custom_id="unmute_all")
     async def unmute_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if interaction.user.guild_permissions.administrator:
-            if interaction.user.voice:
-                await interaction.response.defer() # تأكيد الاستلام فوراً
-                channel = interaction.user.voice.channel
-                for member in channel.members:
-                    if not member.bot:
-                        try:
-                            await member.edit(mute=False)
-                        except: continue
-                await interaction.followup.send(f"🎙️ **فتحت المايكات.. منو الـ Impostor؟**")
-            else:
-                await interaction.response.send_message("❌ ادخل روم صوتي أولاً!", ephemeral=True)
-        else:
-            await interaction.response.send_message("🚫 للأدمن فقط!", ephemeral=True)
+        # استجابة فورية لمنع الـ Failed
+        await interaction.response.send_message("⏳ جاري فتح المايكات...", ephemeral=True, delete_after=1)
+        
+        if interaction.user.guild_permissions.administrator and interaction.user.voice:
+            channel = interaction.user.voice.channel
+            for member in channel.members:
+                if not member.bot:
+                    try: await member.edit(mute=False)
+                    except: continue
+            
+            # إرسال رسالة التأكيد وحذفها بعد 10 ثوانٍ
+            msg = await interaction.channel.send(f"🎙️ **فتحت المايكات.. منو الـ Impostor؟**")
+            await asyncio.sleep(10)
+            try: await msg.delete()
+            except: pass
 
 @bot.event
 async def on_ready():
     await bot.change_presence(activity=discord.Game(name="تحريات Among Us 🔍"))
-    print(f'✅ {bot.user.name} جاهز وشغال تمام!')
+    print(f'✅ {bot.user.name} جاهز ومؤقت الحذف: 10 ثوانٍ!')
 
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def setup(ctx):
     embed = discord.Embed(
         title="🎮 لوحة تحكم Among Us",
-        description="استخدم الأزرار بالأسفل للتحكم بالصوت أثناء اللعب.",
+        description="استخدم الأزرار للتحكم السريع.\n(الرسائل ستحذف تلقائياً بعد 10 ثوانٍ)",
         color=discord.Color.blue()
     )
     await ctx.send(embed=embed, view=AmongUsControl())
