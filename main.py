@@ -1,60 +1,77 @@
 import discord
 import os
 import asyncio
+from discord.ext import commands
+from discord.ui import View
+
+# الـ ID مالت روم اللوق اللي انطيتني اياه
+LOG_CHANNEL_ID = 1489596321580060732
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.voice_states = True
 
-client = discord.Client(intents=intents)
+bot = commands.Bot(command_prefix='!', intents=intents)
 
-@client.event
+class AmongUsControl(View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="كتم الكل 🔴", style=discord.ButtonStyle.danger, custom_id="mute_all")
+    async def mute_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # رد فوري مخفي لمنع الـ Failed
+        await interaction.response.send_message("⏳ جاري الكتم...", ephemeral=True, delete_after=1)
+        
+        if interaction.user.guild_permissions.administrator and interaction.user.voice:
+            channel = interaction.user.voice.channel
+            for member in channel.members:
+                if member != interaction.user and not member.bot:
+                    try: await member.edit(mute=True)
+                    except: continue
+            
+            # إرسال التقرير لروم اللوك فقط
+            log_channel = bot.get_channel(LOG_CHANNEL_ID)
+            if log_channel:
+                embed = discord.Embed(title="🤐 تم الكتم", color=discord.Color.red())
+                embed.add_field(name="الروم الصوتي", value=channel.name, inline=True)
+                embed.add_field(name="بواسطة", value=interaction.user.name, inline=True)
+                await log_channel.send(embed=embed)
+
+    @discord.ui.button(label="فتح الكل 🟢", style=discord.ButtonStyle.success, custom_id="unmute_all")
+    async def unmute_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # رد فوري مخفي لمنع الـ Failed
+        await interaction.response.send_message("⏳ جاري الفتح...", ephemeral=True, delete_after=1)
+        
+        if interaction.user.guild_permissions.administrator and interaction.user.voice:
+            channel = interaction.user.voice.channel
+            for member in channel.members:
+                if not member.bot:
+                    try: await member.edit(mute=False)
+                    except: continue
+            
+            # إرسال التقرير لروم اللوك فقط
+            log_channel = bot.get_channel(LOG_CHANNEL_ID)
+            if log_channel:
+                embed = discord.Embed(title="🎙️ تم الفتح", color=discord.Color.green())
+                embed.add_field(name="الروم الصوتي", value=channel.name, inline=True)
+                embed.add_field(name="بواسطة", value=interaction.user.name, inline=True)
+                await log_channel.send(embed=embed)
+
+@bot.event
 async def on_ready():
-    await client.change_presence(activity=discord.Game(name="حارس السيرفر 🤐"))
-    print(f'✅ {client.user.name} جاهز للأوامر المباشرة (mt/un)!')
+    await bot.change_presence(activity=discord.Game(name="إدارة Among Us 🔍"))
+    print(f'✅ {bot.user.name} جاهز ونظام الأزرار مع اللوق شغال!')
 
-@client.event
-async def on_message(message):
-    # تجاهل رسائل البوت نفسه
-    if message.author == client.user:
-        return
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def setup(ctx):
+    embed = discord.Embed(
+        title="🎮 لوحة تحكم Among Us",
+        description="الأوامر تتنفذ هنا، والتقارير تروح لروم اللوك الخاص.",
+        color=discord.Color.blue()
+    )
+    await ctx.send(embed=embed, view=AmongUsControl())
 
-    # تحويل الرسالة لنص صغير للتأكد
-    content = message.content.lower().strip()
-
-    # --- أمر الكتم المباشر: mt ---
-    if content == 'mt':
-        if message.author.guild_permissions.administrator:
-            if message.author.voice:
-                channel = message.author.voice.channel
-                msg = await message.channel.send("⏳ **تنبيه.. الصمت يقترب**")
-                
-                for i in range(3, 0, -1):
-                    await msg.edit(content=f"⏳ **تنبيه.. الصمت يقترب خلال: {i}**")
-                    await asyncio.sleep(1)
-                
-                for member in channel.members:
-                    if member != message.author and member != client.user:
-                        await member.edit(mute=True)
-                
-                await msg.edit(content=f"🤐 **تم الصمت! المايك لك وحده يا {message.author.name} 👑**")
-            else:
-                await message.channel.send("❌ ادخل روم صوتي أولاً!")
-        else:
-            await message.channel.send(f"🚫 يا {message.author.name}، هاي اللعبة للأدمن بس! 😂")
-
-    # --- أمر الفتح المباشر: un ---
-    elif content == 'un':
-        if message.author.guild_permissions.administrator:
-            if message.author.voice:
-                channel = message.author.voice.channel
-                for member in channel.members:
-                    await member.edit(mute=False)
-                await message.channel.send("🎙️ **فتحت المايك للكل، تفضلوا احجوا!**")
-            else:
-                await message.channel.send("❌ ادخل روم صوتي!")
-
-# تشغيل البوت
 token = os.environ.get('DISCORD_TOKEN')
-client.run(token)
+bot.run(token)
