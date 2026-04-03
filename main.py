@@ -17,31 +17,27 @@ class AmongUsControl(View):
 
     @discord.ui.button(label="كتم الكل (بدأ اللعب) 🔴", style=discord.ButtonStyle.danger, custom_id="mute_all")
     async def mute_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # إخبار ديسكورد أننا استلمنا الأمر فوراً لمنع الـ Failed
-        await interaction.response.defer(ephemeral=True)
+        # الخطوة 1: استجابة فورية جداً لمنع الـ Failed
+        await interaction.response.send_message("🤐 جاري كتم الجميع...", delete_after=3)
         
+        # الخطوة 2: تنفيذ الكتم بالخلفية
         if interaction.user.guild_permissions.administrator:
             if interaction.user.voice:
                 channel = interaction.user.voice.channel
                 for member in channel.members:
-                    if member != interaction.user and member != bot.user:
+                    if member != interaction.user and not member.bot:
                         try:
                             await member.edit(mute=True)
                         except: continue
-                # إرسال رسالة تنحذف تلقائياً بشات القناة
-                msg = await interaction.followup.send("🤐 **تم كتم الجميع بنجاح!**")
-                await asyncio.sleep(3)
-                await msg.delete()
             else:
                 await interaction.followup.send("❌ ادخل روم صوتي!", ephemeral=True)
-        else:
-            await interaction.followup.send("🚫 للأدمن فقط!", ephemeral=True)
 
     @discord.ui.button(label="فتح الكل (إجتماع) 🟢", style=discord.ButtonStyle.success, custom_id="unmute_all")
     async def unmute_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # إخبار ديسكورد أننا استلمنا الأمر فوراً لمنع الـ Failed
-        await interaction.response.defer(ephemeral=True)
+        # الخطوة 1: استجابة فورية جداً لمنع الـ Failed
+        await interaction.response.send_message("🎙️ جاري فتح المايكات...", delete_after=3)
         
+        # الخطوة 2: تنفيذ الفتح بالخلفية
         if interaction.user.guild_permissions.administrator:
             if interaction.user.voice:
                 channel = interaction.user.voice.channel
@@ -49,14 +45,8 @@ class AmongUsControl(View):
                     try:
                         await member.edit(mute=False)
                     except: continue
-                # إرسال رسالة تنحذف تلقائياً بشات القناة
-                msg = await interaction.followup.send("🎙️ **فتحت المايك.. منو الـ Impostor؟**")
-                await asyncio.sleep(3)
-                await msg.delete()
             else:
                 await interaction.followup.send("❌ ادخل روم صوتي!", ephemeral=True)
-        else:
-            await interaction.followup.send("🚫 للأدمن فقط!", ephemeral=True)
 
 @bot.event
 async def on_ready():
@@ -68,7 +58,7 @@ async def on_ready():
 async def setup(ctx):
     embed = discord.Embed(
         title="🎮 لوحة تحكم Among Us",
-        description="استخدم الأزرار للتحكم السريع بالصوت.",
+        description="استخدم الأزرار للتحكم السريع بالصوت.\n(الرسائل تختفي تلقائياً بعد 3 ثواني)",
         color=discord.Color.blue()
     )
     await ctx.send(embed=embed, view=AmongUsControl())
