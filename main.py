@@ -2,77 +2,66 @@ import discord
 import os
 import asyncio
 from discord.ext import commands
-from discord.ui import View, button
 
-# الـ ID مالت روم اللوق
+# ID روم اللوك مالتك
 LOG_CHANNEL_ID = 1489596321580060732
 
-intents = discord.Intents.default()
-intents.message_content = True
-intents.members = True
-intents.voice_states = True
+# تفعيل كل الحساسات برمجياً
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix='', intents=intents) # بدون بريفكس حتى تكتب mt مباشرة
 
-# غيرنا البريفكس هنا إلى نقطة .
-bot = commands.Bot(command_prefix='.', intents=intents)
+@bot.event
+async def on_ready():
+    print(f'✅ {bot.user.name} دخل الخدمة يا شنشول!')
 
-class AmongUsControl(View):
-    def __init__(self):
-        super().__init__(timeout=None)
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
 
-    @discord.ui.button(label="كتم الكل 🔴", style=discord.ButtonStyle.danger, custom_id="mute_all_btn")
-    async def mute_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(ephemeral=True)
-        
-        if interaction.user.voice and interaction.user.voice.channel:
-            channel = interaction.user.voice.channel
+    content = message.content.lower().strip()
+
+    # --- أمر الكتم السريع mt ---
+    if content == 'mt':
+        if message.author.voice:
+            # مسح كلمة mt فوراً حتى ما تخرب الشات
+            try: await message.delete()
+            except: pass
+            
+            channel = message.author.voice.channel
             count = 0
-            for member in channel.members:
-                if member != interaction.user and not member.bot:
+            # نجلب الأعضاء بطريقة "الفريش"
+            members = channel.members
+            for member in members:
+                if member != message.author and not member.bot:
                     try:
                         await member.edit(mute=True)
                         count += 1
                     except: continue
             
+            # إرسال التقرير لروم اللوك
             log_chan = bot.get_channel(LOG_CHANNEL_ID)
             if log_chan:
-                await log_chan.send(f"🤐 **لوق:** تم كتم `{channel.name}` بواسطة {interaction.user.name}")
-            
-            await interaction.followup.send(f"✅ تم كتم {count} أعضاء.", ephemeral=True)
-        else:
-            await interaction.followup.send("❌ ادخل روم صوتي أولاً!", ephemeral=True)
-
-    @discord.ui.button(label="فتح الكل 🟢", style=discord.ButtonStyle.success, custom_id="unmute_all_btn")
-    async def unmute_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer(ephemeral=True)
+                await log_chan.send(f"🤐 **كتم جماعي:** تم كتم `{count}` لاعبين في `{channel.name}` بواسطة {message.author.name}")
         
-        if interaction.user.voice and interaction.user.voice.channel:
-            channel = interaction.user.voice.channel
+    # --- أمر الفتح السريع un ---
+    elif content == 'un':
+        if message.author.voice:
+            try: await message.delete()
+            except: pass
+            
+            channel = message.author.voice.channel
             count = 0
             for member in channel.members:
-                try:
-                    await member.edit(mute=False)
-                    count += 1
-                except: continue
+                if not member.bot:
+                    try:
+                        await member.edit(mute=False)
+                        count += 1
+                    except: continue
             
             log_chan = bot.get_channel(LOG_CHANNEL_ID)
             if log_chan:
-                await log_chan.send(f"🎙️ **لوق:** تم فتح `{channel.name}` بواسطة {interaction.user.name}")
-            
-            await interaction.followup.send(f"✅ تم فتح المايكات لـ {count} أعضاء.", ephemeral=True)
-
-@bot.event
-async def on_ready():
-    print(f'✅ {bot.user.name} جاهز! استخدم .setup')
-
-@bot.command()
-@commands.has_permissions(administrator=True)
-async def setup(ctx):
-    embed = discord.Embed(
-        title="🎮 لوحة تحكم Among Us",
-        description="اضغط الأزرار للتحكم.\nالتقارير تروح لروم اللوق الخاص.",
-        color=discord.Color.blue()
-    )
-    await ctx.send(embed=embed, view=AmongUsControl())
+                await log_chan.send(f"🎙️ **فتح جماعي:** المايكات انفتحت لـ `{count}` لاعبين بواسطة {message.author.name}")
 
 token = os.environ.get('DISCORD_TOKEN')
 bot.run(token)
