@@ -1,6 +1,6 @@
 import discord
 import os
-import asyncio # ضروري للمؤقت
+import asyncio
 from discord.ext import commands
 from discord.ui import Button, View
 
@@ -24,10 +24,11 @@ class AmongUsControl(View):
                     if member != interaction.user and member != bot.user:
                         await member.edit(mute=True)
                 
-                # إرسال رسالة وحذفها بعد 3 ثواني
-                msg = await interaction.response.send_message(f"🤐 تم الكتم بأمر {interaction.user.name}")
+                # إرسال رسالة عادية (ليست مخفية) حتى نتمكن من حذفها
+                await interaction.response.send_message("🤐 تم كتم الجميع.. بالتوفيق!")
+                msg = await interaction.original_response()
                 await asyncio.sleep(3)
-                await interaction.delete_original_response()
+                await msg.delete()
             else:
                 await interaction.response.send_message("❌ ادخل روم صوتي!", ephemeral=True)
         else:
@@ -41,10 +42,11 @@ class AmongUsControl(View):
                 for member in channel.members:
                     await member.edit(mute=False)
                 
-                # إرسال رسالة وحذفها بعد 3 ثواني
-                msg = await interaction.response.send_message(f"🎙️ المايك مفتوح للكل!")
+                # إرسال رسالة عادية وحذفها بعد 3 ثواني
+                await interaction.response.send_message("🎙️ المايك مفتوح.. منو القاتل؟")
+                msg = await interaction.original_response()
                 await asyncio.sleep(3)
-                await interaction.delete_original_response()
+                await msg.delete()
             else:
                 await interaction.response.send_message("❌ ادخل روم صوتي!", ephemeral=True)
         else:
@@ -53,14 +55,14 @@ class AmongUsControl(View):
 @bot.event
 async def on_ready():
     await bot.change_presence(activity=discord.Game(name="تحريات Among Us 🔍"))
-    print(f'✅ {bot.user.name} جاهز!')
+    print(f'✅ {bot.user.name} جاهز للحذف التلقائي!')
 
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def setup(ctx):
     embed = discord.Embed(
         title="🎮 لوحة تحكم Among Us",
-        description="استخدم الأزرار للتحكم السريع بالصوت.",
+        description="استخدم الأزرار للتحكم السريع. (الرسائل ستحذف تلقائياً)",
         color=discord.Color.blue()
     )
     await ctx.send(embed=embed, view=AmongUsControl())
