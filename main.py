@@ -1,5 +1,6 @@
 import discord
 import os
+import asyncio
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -10,8 +11,8 @@ client = discord.Client(intents=intents)
 
 @client.event
 async def on_ready():
-    await client.change_presence(activity=discord.Game(name="حارس Among Us 🕵️"))
-    print(f'✅ {client.user.name} جاهز للأوامر (mt/un) بدون حذف!')
+    await client.change_presence(activity=discord.Game(name="حارس السيرفر 🤐"))
+    print(f'✅ {client.user.name} جاهز للأوامر المباشرة (mt/un)!')
 
 @client.event
 async def on_message(message):
@@ -19,6 +20,7 @@ async def on_message(message):
     if message.author == client.user:
         return
 
+    # تحويل الرسالة لنص صغير للتأكد
     content = message.content.lower().strip()
 
     # --- أمر الكتم المباشر: mt ---
@@ -26,13 +28,17 @@ async def on_message(message):
         if message.author.guild_permissions.administrator:
             if message.author.voice:
                 channel = message.author.voice.channel
-                for member in channel.members:
-                    if member != message.author and not member.bot:
-                        try:
-                            await member.edit(mute=True)
-                        except: continue
+                msg = await message.channel.send("⏳ **تنبيه.. الصمت يقترب**")
                 
-                await message.channel.send(f"🤐 **تم كتم الجميع.. العبوا بصمت!** (بأمر {message.author.name} 👑)")
+                for i in range(3, 0, -1):
+                    await msg.edit(content=f"⏳ **تنبيه.. الصمت يقترب خلال: {i}**")
+                    await asyncio.sleep(1)
+                
+                for member in channel.members:
+                    if member != message.author and member != client.user:
+                        await member.edit(mute=True)
+                
+                await msg.edit(content=f"🤐 **تم الصمت! المايك لك وحده يا {message.author.name} 👑**")
             else:
                 await message.channel.send("❌ ادخل روم صوتي أولاً!")
         else:
@@ -44,16 +50,10 @@ async def on_message(message):
             if message.author.voice:
                 channel = message.author.voice.channel
                 for member in channel.members:
-                    if not member.bot:
-                        try:
-                            await member.edit(mute=False)
-                        except: continue
-                
-                await message.channel.send(f"🎙️ **فتحت المايك للكل، تفضلوا احجوا!** (بأمر {message.author.name} ✨)")
+                    await member.edit(mute=False)
+                await message.channel.send("🎙️ **فتحت المايك للكل، تفضلوا احجوا!**")
             else:
-                await message.channel.send("❌ ادخل روم صوتي أولاً!")
-        else:
-            await message.channel.send(f"🚫 للأدمن فقط!")
+                await message.channel.send("❌ ادخل روم صوتي!")
 
 # تشغيل البوت
 token = os.environ.get('DISCORD_TOKEN')
