@@ -1,60 +1,64 @@
 import discord
 import os
-import asyncio
+from discord.ext import commands
+from discord.ui import Button, View # أضفنا نظام الأزرار
 
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 intents.voice_states = True
 
-client = discord.Client(intents=intents)
+bot = commands.Bot(command_prefix='!', intents=intents)
 
-@client.event
-async def on_ready():
-    await client.change_presence(activity=discord.Game(name="حارس السيرفر 🤐"))
-    print(f'✅ {client.user.name} جاهز للأوامر المباشرة (mt/un)!')
+# --- واجهة الأزرار ---
+class AmongUsControl(View):
+    def __init__(self):
+        super().__init__(timeout=None) # الأزرار تبقى شغالة للأبد
 
-@client.event
-async def on_message(message):
-    # تجاهل رسائل البوت نفسه
-    if message.author == client.user:
-        return
-
-    # تحويل الرسالة لنص صغير للتأكد
-    content = message.content.lower().strip()
-
-    # --- أمر الكتم المباشر: mt ---
-    if content == 'mt':
-        if message.author.guild_permissions.administrator:
-            if message.author.voice:
-                channel = message.author.voice.channel
-                msg = await message.channel.send("⏳ **تنبيه.. الصمت يقترب**")
-                
-                for i in range(3, 0, -1):
-                    await msg.edit(content=f"⏳ **تنبيه.. الصمت يقترب خلال: {i}**")
-                    await asyncio.sleep(1)
-                
+    # زر كتم الجميع (وقت اللعب)
+    @discord.ui.button(label="كتم الكل (بدأ اللعب) 🔴", style=discord.ButtonStyle.danger, custom_id="mute_all")
+    async def mute_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.guild_permissions.administrator:
+            if interaction.user.voice:
+                channel = interaction.user.voice.channel
                 for member in channel.members:
-                    if member != message.author and member != client.user:
+                    if member != interaction.user and member != bot.user:
                         await member.edit(mute=True)
-                
-                await msg.edit(content=f"🤐 **تم الصمت! المايك لك وحده يا {message.author.name} 👑**")
+                await interaction.response.send_message(f"🤐 تم كتم الجميع.. العبوا بصمت! (بأمر {interaction.user.name})", ephemeral=True)
             else:
-                await message.channel.send("❌ ادخل روم صوتي أولاً!")
+                await interaction.response.send_message("❌ ادخل روم صوتي أولاً!", ephemeral=True)
         else:
-            await message.channel.send(f"🚫 يا {message.author.name}، هاي اللعبة للأدمن بس! 😂")
+            await interaction.response.send_message("🚫 هاي للأدمن بس يا بطل! 😂", ephemeral=True)
 
-    # --- أمر الفتح المباشر: un ---
-    elif content == 'un':
-        if message.author.guild_permissions.administrator:
-            if message.author.voice:
-                channel = message.author.voice.channel
+    # زر فتح الجميع (وقت الاجتماع)
+    @discord.ui.button(label="فتح الكل (إجتماع) 🟢", style=discord.ButtonStyle.success, custom_id="unmute_all")
+    async def unmute_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.guild_permissions.administrator:
+            if interaction.user.voice:
+                channel = interaction.user.voice.channel
                 for member in channel.members:
                     await member.edit(mute=False)
-                await message.channel.send("🎙️ **فتحت المايك للكل، تفضلوا احجوا!**")
+                await interaction.response.send_message(f"🎙️ المايك مفتوح.. منو الـ Impostor؟ 🔥", ephemeral=True)
             else:
-                await message.channel.send("❌ ادخل روم صوتي!")
+                await interaction.response.send_message("❌ ادخل روم صوتي أولاً!", ephemeral=True)
+        else:
+            await interaction.response.send_message("🚫 هاي للأدمن بس يا بطل! 😂", ephemeral=True)
 
-# تشغيل البوت
+@bot.event
+async def on_ready():
+    await bot.change_presence(activity=discord.Game(name="تحريات Among Us 🔍"))
+    print(f'✅ {bot.user.name} جاهز بالأزرار!')
+
+# --- أمر إظهار لوحة التحكم ---
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def setup(ctx):
+    embed = discord.Embed(
+        title="🎮 لوحة تحكم Among Us",
+        description="استخدم الأزرار بالأسفل للتحكم بالمايكات بسرعة أثناء اللعب.",
+        color=discord.Color.blue()
+    )
+    await ctx.send(embed=embed, view=AmongUsControl())
+
 token = os.environ.get('DISCORD_TOKEN')
-client.run(token)
+bot.run(token)
