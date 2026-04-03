@@ -17,36 +17,42 @@ class AmongUsControl(View):
 
     @discord.ui.button(label="كتم الكل (بدأ اللعب) 🔴", style=discord.ButtonStyle.danger, custom_id="mute_all")
     async def mute_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # استجابة فورية لمنع الـ Failed
-        await interaction.response.send_message("⏳ جاري الكتم...", ephemeral=True, delete_after=1)
+        # 1. تحديث الزر فوراً لإيهام ديسكورد بالاستجابة الفورية
+        await interaction.response.edit_message(view=self)
         
         if interaction.user.guild_permissions.administrator and interaction.user.voice:
             channel = interaction.user.voice.channel
+            # 2. إرسال رسالة التأكيد
+            msg = await interaction.channel.send(f"🤐 **تم كتم الجميع بأمر {interaction.user.name}**")
+            
+            # 3. تنفيذ الكتم في "الخلفية" حتى لا يتأثر البوت
             for member in channel.members:
                 if member != interaction.user and not member.bot:
                     try: await member.edit(mute=True)
                     except: continue
             
-            # إرسال رسالة التأكيد وحذفها بعد 10 ثوانٍ
-            msg = await interaction.channel.send(f"🤐 **تم كتم الجميع بأمر {interaction.user.name}**")
+            # 4. الحذف بعد 10 ثوانٍ
             await asyncio.sleep(10)
             try: await msg.delete()
             except: pass
 
     @discord.ui.button(label="فتح الكل (إجتماع) 🟢", style=discord.ButtonStyle.success, custom_id="unmute_all")
     async def unmute_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        # استجابة فورية لمنع الـ Failed
-        await interaction.response.send_message("⏳ جاري فتح المايكات...", ephemeral=True, delete_after=1)
+        # 1. تحديث الزر فوراً
+        await interaction.response.edit_message(view=self)
         
         if interaction.user.guild_permissions.administrator and interaction.user.voice:
             channel = interaction.user.voice.channel
+            # 2. إرسال رسالة التأكيد
+            msg = await interaction.channel.send(f"🎙️ **فتحت المايكات.. منو الـ Impostor؟**")
+            
+            # 3. تنفيذ الفتح في الخلفية
             for member in channel.members:
                 if not member.bot:
                     try: await member.edit(mute=False)
                     except: continue
             
-            # إرسال رسالة التأكيد وحذفها بعد 10 ثوانٍ
-            msg = await interaction.channel.send(f"🎙️ **فتحت المايكات.. منو الـ Impostor؟**")
+            # 4. الحذف بعد 10 ثوانٍ
             await asyncio.sleep(10)
             try: await msg.delete()
             except: pass
@@ -54,7 +60,7 @@ class AmongUsControl(View):
 @bot.event
 async def on_ready():
     await bot.change_presence(activity=discord.Game(name="تحريات Among Us 🔍"))
-    print(f'✅ {bot.user.name} جاهز ومؤقت الحذف: 10 ثوانٍ!')
+    print(f'✅ {bot.user.name} جاهز بالنظام السريع!')
 
 @bot.command()
 @commands.has_permissions(administrator=True)
